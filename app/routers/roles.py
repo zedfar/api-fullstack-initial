@@ -100,6 +100,7 @@ async def update_role(
         )
 
 
+    # ✅ Update name dengan validasi duplikat
     if role_data.name is not None:
         existing = await db.execute(
             select(Role).where(Role.name == role_data.name, Role.id != role_id)
@@ -107,13 +108,13 @@ async def update_role(
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="name already taken"
+                detail="Role name already taken"
             )
         role.name = role_data.name
         
-        if role_data.description is not None:
-            role.description = role_data.description
-
+    # ✅ Update description tanpa tergantung name
+    if role_data.description is not None:
+        role.description = role_data.description
 
     await db.commit()
     await db.refresh(role)

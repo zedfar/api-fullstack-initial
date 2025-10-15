@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 class Settings(BaseSettings):
-    APP_NAME: str = "FastAPI Book Management API"
+    APP_NAME: str = "FastAPI Product Management API"
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
 

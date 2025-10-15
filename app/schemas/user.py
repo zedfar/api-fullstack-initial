@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     full_name: Optional[str] = None
     role_id: uuid.UUID = None
+    category_id: uuid.UUID = None
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
@@ -20,6 +21,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=6, max_length=100)
     is_active: Optional[bool] = None
     role_id: uuid.UUID = None
+    category_id: uuid.UUID = None
 
 
 class UserResponse(UserBase):
@@ -34,3 +36,10 @@ class UserResponse(UserBase):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class UserSimple(BaseModel):
+    id: uuid.UUID
+    username: str
+
+    class Config:
+        from_attributes = True

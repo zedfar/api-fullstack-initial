@@ -83,7 +83,7 @@ async def login(
 
     active_tokens.add(access_token)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "metadata": {"email": user.email, "username": user.username, "full_name": user.full_name}}
 
 @router.post("/logout")
 async def logout(token: str = Depends(oauth2_scheme)):

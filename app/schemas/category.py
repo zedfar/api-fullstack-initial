@@ -1,21 +1,23 @@
+from app.schemas.user import UserSimple
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 import uuid
 
-class RoleBase(BaseModel):
+class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = None
 
-class RoleCreate(RoleBase):
-    pass
+class CategoryCreate(CategoryBase):
+    created_by: Optional[uuid.UUID] = None
 
-class RoleUpdate(BaseModel):
+class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = None
 
-class RoleResponse(RoleBase):
+class CategoryResponse(CategoryBase):
     id: uuid.UUID
+    creator: Optional[UserSimple] = None
     created_at: datetime
     updated_at: datetime
 
@@ -23,7 +25,7 @@ class RoleResponse(RoleBase):
         from_attributes = True
 
 
-class RoleSimple(BaseModel):
+class CategorySimple(BaseModel):
     id: uuid.UUID
     name: str
 

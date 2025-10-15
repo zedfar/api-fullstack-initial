@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import connect_mongodb, close_mongodb, engine, Base
-from app.routers import auth, users, books, roles
+from app.routers import auth, categories, products, users, books, roles
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,7 +46,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/", tags=["Root"])
 async def root():
     return {
-        "message": "Welcome to FastAPI Book Management API",
+        "message": "Welcome to FastAPI Management API",
         "version": settings.VERSION,
         "docs": "/docs"
     }
@@ -61,8 +61,10 @@ async def health_check():
 
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
+app.include_router(products.router, prefix=settings.API_V1_PREFIX)
 app.include_router(books.router, prefix=settings.API_V1_PREFIX)
 app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
+app.include_router(categories.router, prefix=settings.API_V1_PREFIX)
 
 # if __name__ == "__main__":
 #     import uvicorn

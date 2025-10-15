@@ -16,5 +16,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=True)
+    
     role = relationship("Role", back_populates="users")  
+    category = relationship("Category", back_populates="creator")
+    products = relationship("Product", back_populates="creator")
