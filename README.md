@@ -38,12 +38,12 @@ pip install -r requirements.txt
 Copy `.env.example` ke `.env` dan update dengan credentials Anda:
 
 ```env
-SECRET_KEY=your-secret-key-here-change-in-production-min-32-chars
-MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
-POSTGRES_USER=postgres
+SECRET_KEY=your-secret-key-here
+MONGODB_URL=mongodb
+POSTGRES_USER=postgres_user
 POSTGRES_PASSWORD=your_password
-POSTGRES_HOST=your-host.sql.goog
-POSTGRES_DB=bookstore
+POSTGRES_HOST=your-host.sql
+POSTGRES_DB=dbname
 ```
 
 ### 3. Initialize Database
