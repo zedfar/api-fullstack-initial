@@ -8,8 +8,8 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=50)
     full_name: Optional[str] = None
-    role_id: uuid.UUID = None
-    category_id: uuid.UUID = None
+    role_id: Optional[uuid.UUID] = None
+    # category_id: uuid.UUID = None
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
@@ -20,8 +20,8 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     password: Optional[str] = Field(None, min_length=6, max_length=100)
     is_active: Optional[bool] = None
-    role_id: uuid.UUID = None
-    category_id: uuid.UUID = None
+    role_id: Optional[uuid.UUID] = None
+    # category_id: uuid.UUID = None
 
 
 class UserResponse(UserBase):

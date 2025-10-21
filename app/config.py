@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     MONGODB_URL: str
-    MONGODB_DB_NAME: str = "bookstore"
+    MONGODB_DB_NAME: str = "postgres"
+    
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
 
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str

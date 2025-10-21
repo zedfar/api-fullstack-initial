@@ -2,8 +2,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from app.config import settings
+import asyncio
+import ssl
 
 Base = declarative_base()
+ssl_context = ssl.create_default_context(cafile=None)
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE  # atau CERT_REQUIRED kalau pakai CA resmi
 
 class MongoDB:
     client: AsyncIOMotorClient = None
@@ -23,6 +28,7 @@ async def close_mongodb():
 
 engine = create_async_engine(
     settings.async_postgres_url,
+    connect_args={"ssl": ssl_context},
     echo=True,
     future=True
 )

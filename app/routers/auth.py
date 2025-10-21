@@ -10,6 +10,7 @@ from app.schemas.user import UserCreate, UserResponse
 from app.utils.security import verify_password, get_password_hash, create_access_token
 from app.config import settings
 from app.dependencies import active_tokens, oauth2_scheme
+from app.models.role import Role 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -39,12 +40,26 @@ async def register(
 
     hashed_password = get_password_hash(user_data.password)
     print(hashed_password)
+    
+    
+    # 🧩 Ambil role default "user" kalau role_id tidak dikirim
+    role_id = getattr(user_data, "role_id", None)
+    if not role_id:
+        result = await db.execute(select(Role).where(Role.name == "user"))
+        role_user = result.scalar_one_or_none()
+        if not role_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Default role 'user' not found in database"
+            )
+        role_id = role_user.id
 
     new_user = User(
         email=user_data.email,
         username=user_data.username,
         full_name=user_data.full_name,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        role_id=role_id
     )
 
     db.add(new_user)
