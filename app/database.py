@@ -22,6 +22,8 @@ def get_async_sessionmaker():
         connect_args={"ssl": ssl_context},
         echo=False,
         future=True,
+        pool_size=5,
+        max_overflow=0
     )
     return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
