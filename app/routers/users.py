@@ -22,7 +22,7 @@ async def get_all_users(
     db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    query = select(User)
+    query = select(User).options(selectinload(User.role))
 
     if search:
         query = query.where(

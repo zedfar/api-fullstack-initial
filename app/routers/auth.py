@@ -106,10 +106,7 @@ async def login(
     active_tokens.add(access_token)
 
     return {
-        "accessToken": access_token,
-        "refreshToken": "",
-        "token_type": "bearer",
-        "user": user_response
+        "access_token": access_token, "token_type": "bearer", "metadata": user_response
         # {
         #     "email": user.email,
         #     "username": user.username,
