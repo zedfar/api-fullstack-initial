@@ -16,10 +16,9 @@ from app.models.role import Role
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-
 @router.get("/me", response_model=UserLoginMetadata)
 async def get_current_user(
-    current_user = Depends(get_current_active_user)
+    current_user=Depends(get_current_active_user)
 ):
     """
     Return current user info based on active Bearer token
@@ -34,7 +33,9 @@ async def register(
     db: AsyncSession = Depends(get_postgres_db)
 ):
     result = await db.execute(
-        select(User).where(
+        select(User)
+        .options(selectinload(User.role))
+        .where(
             (User.email == user_data.email) | (
                 User.username == user_data.username)
         )
