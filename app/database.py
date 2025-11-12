@@ -20,6 +20,8 @@ def get_async_sessionmaker():
         _engine = create_async_engine(
             settings.async_postgres_url,
             echo=False,
+            pool_size=5,
+            max_overflow=0,
             future=True
         )
         _SessionLocal = async_sessionmaker(
