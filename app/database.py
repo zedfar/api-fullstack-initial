@@ -6,68 +6,50 @@ from app.config import settings
 
 Base = declarative_base()
 
-# --- Lazy globals (loop-safe) ---
-_engine = None
-_SessionLocal = None
-_mongo_client = None
-_mongo_db = None
 
 # --- PostgreSQL ---
 def get_async_sessionmaker():
-    """Create async sessionmaker per loop."""
-    global _engine, _SessionLocal
-    if _engine is None:
-        _engine = create_async_engine(
-            settings.async_postgres_url,
-            echo=False,
-            pool_size=5,
-            max_overflow=0,
-            future=True
-        )
-        _SessionLocal = async_sessionmaker(
-            bind=_engine,
-            class_=AsyncSession,
-            expire_on_commit=False
-        )
-    return _SessionLocal
+    """
+    Factory sessionmaker aman untuk serverless (Vercel).
+    Engine dibuat fresh di event loop aktif.
+    """
+    ssl_context = ssl.create_default_context(cafile=None)
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    engine = create_async_engine(
+        settings.async_postgres_url,
+        connect_args={"ssl": ssl_context},
+        echo=False,
+        future=True,
+    )
+    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def get_postgres_db():
-    """Dependency for FastAPI endpoints"""
+    """
+    Dependency untuk FastAPI.
+    Membuka session baru di tiap request.
+    """
     SessionLocal = get_async_sessionmaker()
     async with SessionLocal() as session:
         yield session
 
 
-async def init_postgres():
-    """Manual init (local only)"""
-    SessionLocal = get_async_sessionmaker()
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        print("✅ PostgreSQL tables created")
-
 # --- MongoDB ---
+# ✅ untuk dependency injection
 async def get_mongodb():
-    """Lazy Mongo connection (safe for serverless)"""
-    global _mongo_client, _mongo_db
-    if _mongo_client is None:
-        mongo_uri = getattr(settings, "MONGODB_URI", None)
-        mongo_db_name = getattr(settings, "MONGODB_DB", None)
+    mongo_uri = getattr(settings, "MONGODB_URL", None)
+    mongo_db = getattr(settings, "MONGODB_DB_NAME", None)
 
-        if not mongo_uri or not mongo_db_name:
-            print("⚠️ MongoDB credentials missing")
-            return None
+    if not mongo_uri or not mongo_db:
+        print("⚠️ MongoDB credentials missing")
+        yield None
+        return
 
-        _mongo_client = AsyncIOMotorClient(mongo_uri)
-        _mongo_db = _mongo_client[mongo_db_name]
-        print(f"✅ MongoDB connected to '{mongo_db_name}'")
-
-    return _mongo_db
-
-
-async def close_mongodb():
-    global _mongo_client
-    if _mongo_client:
-        _mongo_client.close()
-        _mongo_client = None
-        print("🛑 MongoDB closed")
+    client = AsyncIOMotorClient(mongo_uri)
+    db = client[mongo_db]
+    try:
+        yield db
+    finally:
+        client.close()

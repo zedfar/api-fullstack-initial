@@ -1,34 +1,31 @@
-# app/main.py
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.database import get_mongodb, close_mongodb, get_async_sessionmaker, Base
+from app.database import get_async_sessionmaker, get_mongodb, Base
 from app.seed_data import seed_roles
+# from app.models import Base
 from app.routers import auth, categories, products, users, books, roles
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # PostgreSQL: buat tabel
+    # --- PostgreSQL init ---
     SessionLocal = get_async_sessionmaker()
     async with SessionLocal().bind.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
-    # MongoDB connect (lazy)
-    await get_mongodb()
-
-    # Seed
     await seed_roles()
+
+    # --- MongoDB init (optional) ---
+    async for _ in get_mongodb():
+        break
 
     yield
 
-    # Tutup MongoDB (optional)
-    await close_mongodb()
+    # (tidak perlu explicit close karena Vercel ephemeral)
 
 
-# --- FastAPI App ---
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
@@ -37,7 +34,6 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -47,7 +43,6 @@ app.add_middleware(
 )
 
 
-# --- Global Error Handler ---
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -56,7 +51,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# --- Health Endpoints ---
 @app.get("/", tags=["Root"])
 async def root():
     return {
@@ -82,9 +76,3 @@ app.include_router(products.router, prefix=settings.API_V1_PREFIX)
 app.include_router(books.router, prefix=settings.API_V1_PREFIX)
 app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories.router, prefix=settings.API_V1_PREFIX)
-
-
-# --- Local Dev ---
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
