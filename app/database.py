@@ -4,98 +4,68 @@ from sqlalchemy.orm import declarative_base
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
 
-# --- PostgreSQL (SQLAlchemy + asyncpg) ---
 Base = declarative_base()
 
-# SSL context untuk Neon / Supabase
-ssl_context = ssl.create_default_context(cafile=None)
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
-# Lazy initialization (biar ga bentrok event loop di Vercel)
+# --- Lazy globals (loop-safe) ---
 _engine = None
 _SessionLocal = None
+_mongo_client = None
+_mongo_db = None
 
-
+# --- PostgreSQL ---
 def get_async_sessionmaker():
-    """
-    Membuat SQLAlchemy engine dan sessionmaker secara lazy.
-    Dipanggil hanya saat ada request pertama kali.
-    """
+    """Create async sessionmaker per loop."""
     global _engine, _SessionLocal
     if _engine is None:
         _engine = create_async_engine(
             settings.async_postgres_url,
-            connect_args={"ssl": ssl_context},
             echo=False,
-            future=True,
+            future=True
         )
         _SessionLocal = async_sessionmaker(
             bind=_engine,
             class_=AsyncSession,
-            expire_on_commit=False,
+            expire_on_commit=False
         )
     return _SessionLocal
 
 
 async def get_postgres_db():
-    """
-    Dependency untuk FastAPI endpoint.
-    Membuka dan menutup session per-request.
-    """
+    """Dependency for FastAPI endpoints"""
     SessionLocal = get_async_sessionmaker()
     async with SessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+        yield session
 
 
-# --- MongoDB (Motor) ---
-mongodb_client: AsyncIOMotorClient | None = None
-mongodb = None
-
-
-async def connect_mongodb():
-    """Connect to MongoDB asynchronously"""
-    global mongodb_client, mongodb
-    mongo_uri = getattr(settings, "MONGODB_URL", None)
-    mongo_db = getattr(settings, "MONGODB_DB_NAME", None)
-
-    if mongo_uri and mongo_db:
-        mongodb_client = AsyncIOMotorClient(mongo_uri)
-        mongodb = mongodb_client[mongo_db]
-        print(f"✅ MongoDB connected to '{mongo_db}'")
-    else:
-        print("⚠️ MongoDB credentials not found in .env — skipping Mongo connection.")
-
-
-async def close_mongodb():
-    """Close MongoDB connection"""
-    global mongodb_client
-    if mongodb_client:
-        mongodb_client.close()
-        print("🛑 MongoDB connection closed.")
-
-
-def get_mongodb():
-    """
-    Getter sederhana untuk akses database MongoDB.
-    Return None kalau Mongo belum dikonfigurasi atau belum connect.
-    """
-    global mongodb
-    if mongodb is None:
-        print("⚠️ MongoDB belum terkoneksi.")
-    return mongodb
-
-
-# --- Utility (optional untuk seed_data.py dsb) ---
 async def init_postgres():
-    """
-    Initialize PostgreSQL tables (manual run).
-    Gunakan saat local dev / seeding.
-    """
+    """Manual init (local only)"""
     SessionLocal = get_async_sessionmaker()
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         print("✅ PostgreSQL tables created")
+
+# --- MongoDB ---
+async def get_mongodb():
+    """Lazy Mongo connection (safe for serverless)"""
+    global _mongo_client, _mongo_db
+    if _mongo_client is None:
+        mongo_uri = getattr(settings, "MONGODB_URI", None)
+        mongo_db_name = getattr(settings, "MONGODB_DB", None)
+
+        if not mongo_uri or not mongo_db_name:
+            print("⚠️ MongoDB credentials missing")
+            return None
+
+        _mongo_client = AsyncIOMotorClient(mongo_uri)
+        _mongo_db = _mongo_client[mongo_db_name]
+        print(f"✅ MongoDB connected to '{mongo_db_name}'")
+
+    return _mongo_db
+
+
+async def close_mongodb():
+    global _mongo_client
+    if _mongo_client:
+        _mongo_client.close()
+        _mongo_client = None
+        print("🛑 MongoDB closed")

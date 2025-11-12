@@ -4,23 +4,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.database import get_async_sessionmaker, connect_mongodb, close_mongodb, Base
+from app.database import get_mongodb, close_mongodb, get_async_sessionmaker, Base
 from app.seed_data import seed_roles
 from app.routers import auth, categories, products, users, books, roles
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await connect_mongodb()
-
-    # Init Postgres tables
+    # PostgreSQL: buat tabel
     SessionLocal = get_async_sessionmaker()
-    async with SessionLocal() as session:
-        async with session.bind.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    async with SessionLocal().bind.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # MongoDB connect (lazy)
+    await get_mongodb()
 
+    # Seed
     await seed_roles()
+
     yield
+
+    # Tutup MongoDB (optional)
     await close_mongodb()
 
 
