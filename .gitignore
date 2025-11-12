@@ -62,3 +62,4 @@ poetry.lock
 # Others
 *.sublime-project
 *.sublime-workspace
+structure.txt
