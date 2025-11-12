@@ -1,4 +1,5 @@
 # from sqlalchemy import Column, String, Boolean, Integer, DateTime, ForeignKey
+from app.schemas.role import RoleSimple
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
@@ -29,6 +30,7 @@ class UserResponse(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    role: Optional[RoleSimple] = None
 
     class Config:
         from_attributes = True
