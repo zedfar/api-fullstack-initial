@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from datetime import timedelta
 from app.database import get_postgres_db
 from app.models.user import User
 from app.schemas.auth import Token
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserLoginMetadata, UserResponse
 from app.utils.security import verify_password, get_password_hash, create_access_token
 from app.config import settings
 from app.dependencies import active_tokens, oauth2_scheme
@@ -76,9 +77,12 @@ async def login(
     db: AsyncSession = Depends(get_postgres_db)
 ):
     result = await db.execute(
-        select(User).where(User.username == form_data.username)
+        select(User)
+        .options(selectinload(User.role))
+        .where(User.username == form_data.username)
     )
     user = result.scalar_one_or_none()
+    user_response = UserLoginMetadata.from_orm(user)
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -101,14 +105,17 @@ async def login(
 
     active_tokens.add(access_token)
 
-    return {"access_token": access_token, "token_type": "bearer", "metadata": {
-        "email": user.email,
-        "username": user.username,
-        "full_name": user.full_name,
-        "role": user.role,
-        "is_active": user.is_active
-        
-    }}
+    return {
+        "access_token": access_token, "token_type": "bearer", "metadata": user_response
+        # {
+        #     "email": user.email,
+        #     "username": user.username,
+        #     "full_name": user.full_name,
+        #     "role": role_obj,
+        #     "is_active": user.is_active
+
+        # }
+    }
 
 
 @router.post("/logout")

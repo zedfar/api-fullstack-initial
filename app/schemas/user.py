@@ -45,3 +45,14 @@ class UserSimple(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class UserLoginMetadata(BaseModel):
+    id: uuid.UUID
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    is_active: bool
+    role: Optional[RoleSimple] = None
+
+    class Config:
+        from_attributes = True
