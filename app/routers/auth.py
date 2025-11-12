@@ -10,10 +10,22 @@ from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserLoginMetadata, UserResponse
 from app.utils.security import verify_password, get_password_hash, create_access_token
 from app.config import settings
-from app.dependencies import active_tokens, oauth2_scheme
+from app.dependencies import active_tokens, get_current_active_user, oauth2_scheme
 from app.models.role import Role
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+
+@router.get("/me", response_model=UserLoginMetadata)
+async def get_current_user(
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Return current user info based on active Bearer token
+    """
+    # current_user sudah di-decode di get_current_active_user
+    return current_user
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

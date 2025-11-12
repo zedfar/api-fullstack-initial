@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 from app.database import get_postgres_db
 from app.models.user import User
@@ -9,6 +10,7 @@ from app.utils.security import decode_access_token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 active_tokens = set()
+
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -27,13 +29,17 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.username == username))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .where(User.username == username))
     user = result.scalar_one_or_none()
 
     if user is None:
         raise credentials_exception
 
     return user
+
 
 async def get_current_active_user(
     current_user: User = Depends(get_current_user)
