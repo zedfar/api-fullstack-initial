@@ -63,3 +63,5 @@ poetry.lock
 *.sublime-project
 *.sublime-workspace
 structure.txt
+
+.claude

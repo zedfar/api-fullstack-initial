@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List
 
 
@@ -11,7 +12,7 @@ class Settings(BaseSettings):
     # --- Auth ---
     SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 240
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=240, ge=1, le=43200)
 
     # --- PostgreSQL ---
     POSTGRES_USER: str
