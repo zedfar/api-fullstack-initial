@@ -18,8 +18,8 @@ async def lifespan(app: FastAPI):
     await seed_roles()
 
     # --- MongoDB init (optional) ---
-    async for _ in get_mongodb():
-        break
+    # async for _ in get_mongodb():
+    #     break
 
     yield
 
@@ -73,6 +73,6 @@ async def health_check():
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(products.router, prefix=settings.API_V1_PREFIX)
-app.include_router(books.router, prefix=settings.API_V1_PREFIX)
+# app.include_router(books.router, prefix=settings.API_V1_PREFIX)
 app.include_router(roles.router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories.router, prefix=settings.API_V1_PREFIX)
