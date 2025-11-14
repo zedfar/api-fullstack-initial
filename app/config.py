@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # --- Auth ---
     SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
+    # Token expiry: 240 minutes = 4 hours
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 240
 
     # --- PostgreSQL ---

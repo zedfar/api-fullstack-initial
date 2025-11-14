@@ -64,4 +64,9 @@ poetry.lock
 *.sublime-workspace
 structure.txt
 
+# Test scripts
+test_config.py
+test_token_expiry.py
+verify_token_expiry.py
+
 .claude

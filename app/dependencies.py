@@ -9,7 +9,13 @@ from app.utils.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-active_tokens = set()
+# ============================================================================
+# ACTIVE TOKENS CHECKING - Currently DISABLED (rely on JWT expiry only)
+# ============================================================================
+# Uncomment code below to enable in-memory active tokens tracking
+# Note: This will require restart = tokens lost. For persistent storage, use database.
+# active_tokens = set()
+# ============================================================================
 
 
 async def get_current_user(
@@ -22,8 +28,13 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if token not in active_tokens:
-        raise credentials_exception
+    # ============================================================================
+    # ACTIVE TOKENS CHECKING - Currently DISABLED
+    # ============================================================================
+    # Uncomment lines below to check if token is in active_tokens set
+    # if token not in active_tokens:
+    #     raise credentials_exception
+    # ============================================================================
 
     username = decode_access_token(token)
     if username is None:

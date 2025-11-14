@@ -10,7 +10,8 @@ from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserLoginMetadata, UserResponse
 from app.utils.security import verify_password, get_password_hash, create_access_token
 from app.config import settings
-from app.dependencies import active_tokens, get_current_active_user, oauth2_scheme
+# from app.dependencies import active_tokens  # DISABLED: uncomment to enable active_tokens checking
+from app.dependencies import get_current_active_user, oauth2_scheme
 from app.models.role import Role
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -116,7 +117,12 @@ async def login(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
 
-    active_tokens.add(access_token)
+    # ============================================================================
+    # ACTIVE TOKENS TRACKING - Currently DISABLED
+    # ============================================================================
+    # Uncomment line below to add token to active_tokens set
+    # active_tokens.add(access_token)
+    # ============================================================================
 
     return {
         "access_token": access_token, "token_type": "bearer", "metadata": user_response
@@ -133,7 +139,16 @@ async def login(
 
 @router.post("/logout")
 async def logout(token: str = Depends(oauth2_scheme)):
-    if token in active_tokens:
-        active_tokens.remove(token)
+    # ============================================================================
+    # ACTIVE TOKENS TRACKING - Currently DISABLED
+    # ============================================================================
+    # Uncomment lines below to remove token from active_tokens set
+    # if token in active_tokens:
+    #     active_tokens.remove(token)
+    # ============================================================================
 
-    return {"message": "Successfully logged out"}
+    # Note: With active_tokens disabled, logout doesn't invalidate the token.
+    # Token will remain valid until JWT expiry (4 hours).
+    # For true logout, implement token blacklist or use database storage.
+
+    return {"message": "Successfully logged out (token still valid until expiry)"}
