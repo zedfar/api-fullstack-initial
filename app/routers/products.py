@@ -78,7 +78,33 @@ async def get_all_products(
     # ============================================================================
     # Get total count (before pagination)
     # ============================================================================
-    count_query = select(func.count()).select_from(base_query.alias())
+    # Build count query with same filters as base_query
+    count_query = select(func.count(Product.id))
+
+    if search:
+        count_query = count_query.where((Product.name.ilike(f"%{search}%")))
+
+    if category_id:
+        count_query = count_query.where(Product.category_id == category_id)
+
+    if stock_status:
+        status_value = stock_status.lower()
+        if status_value == "red":
+            count_query = count_query.where(Product.stock == 0)
+        elif status_value == "yellow":
+            count_query = count_query.where(
+                (Product.stock > 0) &
+                (Product.stock <= Product.low_stock_threshold)
+            )
+        elif status_value == "green":
+            count_query = count_query.where(Product.stock > Product.low_stock_threshold)
+
+    if min_price is not None:
+        count_query = count_query.where(Product.price >= min_price)
+
+    if max_price is not None:
+        count_query = count_query.where(Product.price <= max_price)
+
     total_result = await db.execute(count_query)
     total = total_result.scalar()
 
