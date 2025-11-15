@@ -4,7 +4,7 @@ RESTful API service dengan Python FastAPI untuk management lengkap users, produc
 
 ## Fitur Utama
 
-- **Authentication**: JWT-based login, logout, dan register dengan role-based access
+- **Authentication**: JWT-based login, logout, dan register dengan role-based access dan auto-login setelah registrasi
 - **User Management**: CRUD users dengan role system (PostgreSQL)
   - ✅ Pagination dengan metadata (total count, page info)
   - ✅ Sorting (by username, email, full_name, created_at)
@@ -272,18 +272,24 @@ curl -X POST "http://localhost:8000/api/v1/auth/register" \
 **Response:**
 ```json
 {
-  "id": "uuid-here",
-  "email": "john@example.com",
-  "username": "johndoe",
-  "full_name": "John Doe",
-  "is_active": true,
-  "role": {
-    "id": "user",
-    "name": "user",
-    "description": "Regular user with basic permissions"
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "metadata": {
+    "id": "uuid-here",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "full_name": "John Doe",
+    "is_active": true,
+    "role": {
+      "id": "user",
+      "name": "user",
+      "description": "Regular user with basic permissions"
+    }
   }
 }
 ```
+
+> **Note**: Register endpoint now auto-logins the user and returns an access token
 
 ### 2. Login
 
@@ -298,11 +304,17 @@ curl -X POST "http://localhost:8000/api/v1/auth/login" \
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
-  "user": {
+  "metadata": {
     "id": "uuid-here",
     "email": "john@example.com",
     "username": "johndoe",
-    "full_name": "John Doe"
+    "full_name": "John Doe",
+    "is_active": true,
+    "role": {
+      "id": "user",
+      "name": "user",
+      "description": "Regular user with basic permissions"
+    }
   }
 }
 ```
@@ -504,11 +516,14 @@ api-fullstack-initial/
 - **Password Hashing**: Passwords di-hash menggunakan bcrypt dengan salt
 - **JWT Tokens**: Authentication menggunakan JWT dengan expiration time
 - **Token Expiration**: Default 240 menit (4 jam), bisa dikonfigurasi via env
+- **Logout Behavior**: Token tetap valid hingga expiry meskipun sudah logout (active token tracking saat ini dinonaktifkan)
 - **CORS**: CORS middleware configured untuk cross-origin requests
 - **Input Validation**: Semua input divalidasi dengan Pydantic schemas
 - **SQL Injection Protection**: SQLAlchemy ORM mencegah SQL injection
 - **Authorization**: Role-based access control untuk endpoints tertentu
 - **Owner Verification**: Category update/delete hanya bisa dilakukan oleh creator
+
+> **Security Note**: Untuk production deployment, pertimbangkan untuk mengaktifkan token blacklist atau database token storage untuk true logout functionality
 
 ## Error Handling
 
