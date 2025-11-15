@@ -1,16 +1,20 @@
 # FastAPI Product Management API
 
-RESTful API service dengan Python FastAPI untuk management lengkap users, products, categories, books, dan roles dengan JWT authentication. Menggunakan PostgreSQL dan MongoDB sebagai database.
+RESTful API service dengan Python FastAPI untuk management lengkap users, products, categories, dan roles dengan JWT authentication. Menggunakan PostgreSQL sebagai database utama dengan dukungan pagination metadata, sorting, dan stock status indicator.
 
 ## Fitur Utama
 
 - **Authentication**: JWT-based login, logout, dan register dengan role-based access
 - **User Management**: CRUD users dengan role system (PostgreSQL)
+  - ✅ Pagination dengan metadata (total count, page info)
+  - ✅ Sorting (by username, email, full_name, created_at)
+  - ✅ Enhanced search (username, email, full_name)
 - **Product Management**: CRUD products dengan category relations (PostgreSQL)
+  - ✅ Pagination dengan metadata (total count, page info)
+  - ✅ Sorting (by name, stock, price, created_at, status)
+  - ✅ Stock status indicator (red/yellow/green)
 - **Category Management**: CRUD categories untuk products (PostgreSQL)
-- **Book Management**: CRUD books dengan MongoDB (MongoDB Atlas)
 - **Role Management**: Management roles untuk user permissions (PostgreSQL)
-- **Pagination & Filtering**: Support pagination dan filtering untuk semua list endpoints
 - **Data Validation**: Pydantic schema validation
 - **API Documentation**: Swagger UI dan ReDoc
 - **Async/Await**: Full async support untuk performa optimal
@@ -19,11 +23,13 @@ RESTful API service dengan Python FastAPI untuk management lengkap users, produc
 - **CORS**: CORS middleware configured
 - **Auto Database Init**: Automatic database schema creation on startup
 
+> **Note**: Book Management (MongoDB) feature is currently disabled
+
 ## Tech Stack
 
 - **FastAPI** 0.109.0 - Modern Python web framework
 - **PostgreSQL** - Relational database untuk users, products, categories, roles
-- **MongoDB Atlas** - NoSQL database untuk books
+- **MongoDB Atlas** - NoSQL database (optional, currently disabled)
 - **SQLAlchemy** 2.0.25 - Async ORM untuk PostgreSQL
 - **Motor** 3.3.2 - Async MongoDB driver
 - **JWT** - JSON Web Tokens untuk authentication (python-jose)
@@ -36,7 +42,7 @@ RESTful API service dengan Python FastAPI untuk management lengkap users, produc
 
 - Python 3.11+
 - PostgreSQL database
-- MongoDB Atlas account (atau MongoDB local)
+- MongoDB Atlas account (optional, currently not in use)
 - pip (Python package manager)
 
 ## Setup
@@ -142,21 +148,55 @@ POST /api/v1/auth/logout   - Logout user
 ### Users (Requires Authentication)
 
 ```
-GET    /api/v1/users          - Get all users (with pagination & filtering)
+GET    /api/v1/users          - Get all users (with pagination, sorting, filtering & metadata)
 GET    /api/v1/users/{id}     - Get user detail by ID
 POST   /api/v1/users          - Create new user
 PUT    /api/v1/users/{id}     - Update user
 DELETE /api/v1/users/{id}     - Delete user
 ```
 
+**Response Format (GET /api/v1/users):**
+```json
+{
+  "data": [{ /* user objects */ }],
+  "metadata": {
+    "total": 45,
+    "skip": 0,
+    "limit": 10,
+    "page": 1,
+    "total_pages": 5
+  }
+}
+```
+
 ### Products (Requires Authentication)
 
 ```
-GET    /api/v1/products       - Get all products (with pagination & filtering)
-GET    /api/v1/products/{id}  - Get product detail
+GET    /api/v1/products       - Get all products (with pagination, sorting, filtering & metadata)
+GET    /api/v1/products/{id}  - Get product detail (includes stock_status)
 POST   /api/v1/products       - Create product
 PUT    /api/v1/products/{id}  - Update product
 DELETE /api/v1/products/{id}  - Delete product
+```
+
+**Response Format (GET /api/v1/products):**
+```json
+{
+  "data": [{
+    "id": "...",
+    "name": "Gaming Laptop",
+    "stock": 5,
+    "stock_status": "yellow",  // red | yellow | green
+    /* ... */
+  }],
+  "metadata": {
+    "total": 156,
+    "skip": 0,
+    "limit": 10,
+    "page": 1,
+    "total_pages": 16
+  }
+}
 ```
 
 ### Categories (Requires Authentication)
@@ -169,16 +209,6 @@ PUT    /api/v1/categories/{id}  - Update category (only creator)
 DELETE /api/v1/categories/{id}  - Delete category
 ```
 
-### Books (Requires Authentication)
-
-```
-GET    /api/v1/books       - Get all books (with pagination & filtering)
-GET    /api/v1/books/{id}  - Get book detail
-POST   /api/v1/books       - Create book
-PUT    /api/v1/books/{id}  - Update book
-DELETE /api/v1/books/{id}  - Delete book
-```
-
 ### Roles (Requires Authentication)
 
 ```
@@ -189,6 +219,8 @@ PUT    /api/v1/roles/{id}  - Update role
 DELETE /api/v1/roles/{id}  - Delete role
 ```
 
+> **Note**: Books endpoints are currently disabled
+
 ## Query Parameters
 
 ### Pagination (All List Endpoints)
@@ -196,10 +228,21 @@ DELETE /api/v1/roles/{id}  - Delete role
 - `skip`: Number of records to skip (default: 0)
 - `limit`: Number of records to return (default: 10, max: 100)
 
+### Sorting
+
+**Users:**
+- `sort_by`: Field to sort by: `username`, `email`, `full_name`, `created_at`
+- `order`: Sort order: `asc` (ascending) or `desc` (descending) - default: `asc`
+
+**Products:**
+- `sort_by`: Field to sort by: `name`, `stock`, `price`, `created_at`, `status`
+- `order`: Sort order: `asc` (ascending) or `desc` (descending) - default: `asc`
+  - When `sort_by=status`: `asc` = red → yellow → green (urgent first), `desc` = green → yellow → red
+
 ### Filtering
 
 **Users:**
-- `search`: Search by username or email
+- `search`: Search by username, email, or full name (case-insensitive, partial match)
 
 **Products:**
 - `search`: Search by product name
@@ -207,12 +250,6 @@ DELETE /api/v1/roles/{id}  - Delete role
 
 **Categories:**
 - `search`: Search by category name
-
-**Books:**
-- `search`: Search by title or author
-- `author`: Filter by author
-- `min_price`: Minimum price
-- `max_price`: Maximum price
 
 **Roles:**
 - `search`: Search by role name
@@ -306,34 +343,72 @@ curl -X POST "http://localhost:8000/api/v1/products" \
   }'
 ```
 
-### 6. Get Products with Filtering
+### 6. Get Products with Filtering and Sorting
 
 ```bash
-curl "http://localhost:8000/api/v1/products?search=iphone&category_id=category-uuid&skip=0&limit=10" \
+# Basic filtering with sorting by price (lowest first)
+curl "http://localhost:8000/api/v1/products?search=iphone&category_id=category-uuid&sort_by=price&order=asc&skip=0&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Sort by stock status (urgent products first: red → yellow → green)
+curl "http://localhost:8000/api/v1/products?sort_by=status&order=asc&skip=0&limit=20" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 7. Create Book (MongoDB)
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/books" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Clean Code",
-    "author": "Robert C. Martin",
-    "description": "A Handbook of Agile Software Craftsmanship",
-    "isbn": "978-0132350884",
-    "published_year": 2008,
-    "price": 45.99
-  }'
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "...",
+      "name": "Product A",
+      "stock": 0,
+      "stock_status": "red",
+      "price": 999.99,
+      ...
+    }
+  ],
+  "metadata": {
+    "total": 156,
+    "skip": 0,
+    "limit": 20,
+    "page": 1,
+    "total_pages": 8
+  }
+}
 ```
 
-### 8. Get Books with Price Range
+### 7. Get Users with Sorting
 
 ```bash
-curl "http://localhost:8000/api/v1/books?search=clean&min_price=20&max_price=50&skip=0&limit=10" \
+# Sort users by registration date (newest first)
+curl "http://localhost:8000/api/v1/users?sort_by=created_at&order=desc&skip=0&limit=10" \
   -H "Authorization: Bearer YOUR_TOKEN"
+
+# Search users and sort alphabetically
+curl "http://localhost:8000/api/v1/users?search=john&sort_by=username&order=asc" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "...",
+      "username": "johndoe",
+      "email": "john@example.com",
+      ...
+    }
+  ],
+  "metadata": {
+    "total": 15,
+    "skip": 0,
+    "limit": 10,
+    "page": 1,
+    "total_pages": 2
+  }
+}
 ```
 
 ## Project Structure
@@ -355,10 +430,10 @@ api-fullstack-initial/
 │   │   └── role.py              # SQLAlchemy Role model
 │   ├── routers/
 │   │   ├── auth.py              # Authentication endpoints
-│   │   ├── users.py             # Users CRUD endpoints
-│   │   ├── products.py          # Products CRUD endpoints
+│   │   ├── users.py             # Users CRUD endpoints (enhanced with sorting)
+│   │   ├── products.py          # Products CRUD endpoints (enhanced with sorting & stock status)
 │   │   ├── categories.py        # Categories CRUD endpoints
-│   │   ├── books.py             # Books CRUD endpoints (MongoDB)
+│   │   ├── books.py             # Books CRUD endpoints (currently disabled)
 │   │   └── roles.py             # Roles CRUD endpoints
 │   ├── schemas/
 │   │   ├── auth.py              # Auth Pydantic schemas (login, register)
@@ -422,18 +497,7 @@ api-fullstack-initial/
 - created_at (DateTime)
 - updated_at (DateTime)
 
-### MongoDB Collections
-
-**books**
-- _id (ObjectId)
-- title (String)
-- author (String)
-- description (String, Optional)
-- isbn (String, Optional)
-- published_year (Integer, Optional)
-- price (Float)
-- created_at (DateTime)
-- updated_at (DateTime)
+> **Note**: MongoDB collections (books) are currently not in use
 
 ## Security
 
@@ -655,14 +719,24 @@ Untuk pertanyaan atau issues:
 
 ## Changelog
 
+### Version 1.0.1 (Current)
+- **Enhanced Users API**:
+  - Pagination dengan metadata (total count, page info)
+  - Sorting by username, email, full_name, created_at
+  - Enhanced search across username, email, and full_name
+- **Enhanced Products API**:
+  - Pagination dengan metadata (total count, page info)
+  - Sorting by name, stock, price, created_at, status
+  - Stock status indicator (red/yellow/green)
+- **Disabled** Books management (MongoDB) temporarily
+
 ### Version 1.0.0
 - Initial release
 - User management dengan role system
 - Product & Category management
-- Book management (MongoDB)
 - JWT authentication
 - Full CRUD operations
-- Pagination & filtering
+- Basic pagination & filtering
 - Auto database initialization
 - Health check endpoint
 - Comprehensive error handling
