@@ -143,28 +143,38 @@ async def create_user(
 
     hashed_password = get_password_hash(user_data.password)
 
-    role_result = await db.execute(select(Role).where(Role.name == "admin"))
-    admin_role = role_result.scalar_one_or_none()
+    # role_result = await db.execute(select(Role).where(Role.name == "admin"))
+    # admin_role = role_result.scalar_one_or_none()
 
-    if not admin_role:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Default role 'admin' not found"
-        )
+    # if not admin_role:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Default role 'admin' not found"
+    #     )
 
     new_user = User(
         email=user_data.email,
         username=user_data.username,
         full_name=user_data.full_name,
         hashed_password=hashed_password,
-        role_id=admin_role.id
+        role_id=user_data.role_id
     )
 
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
 
-    return new_user
+    # ============================================================================
+    # Reload user with role relationship for response
+    # ============================================================================
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .where(User.id == new_user.id)
+    )
+    user_with_role = result.scalar_one()
+
+    return user_with_role
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -174,7 +184,14 @@ async def update_user(
     db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    # ============================================================================
+    # Load user with role relationship
+    # ============================================================================
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
 
     if not user:
@@ -221,6 +238,18 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+
+    # ============================================================================
+    # Reload user with role relationship if role_id was updated
+    # This ensures the response includes the updated role object
+    # ============================================================================
+    if user_data.role_id is not None:
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.role))
+            .where(User.id == user_id)
+        )
+        user = result.scalar_one()
 
     return user
 
