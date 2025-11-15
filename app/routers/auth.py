@@ -7,7 +7,7 @@ from datetime import timedelta
 from app.database import get_postgres_db
 from app.models.user import User
 from app.schemas.auth import Token
-from app.schemas.user import UserCreate, UserLoginMetadata, UserResponse
+from app.schemas.user import UserCreate, UserLoginMetadata
 from app.utils.security import verify_password, get_password_hash, create_access_token
 from app.config import settings
 # from app.dependencies import active_tokens  # DISABLED: uncomment to enable active_tokens checking
@@ -28,7 +28,7 @@ async def get_current_user(
     return current_user
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_postgres_db)
@@ -81,7 +81,7 @@ async def register(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    
+
     result = await db.execute(
         select(User)
         .options(selectinload(User.role))
@@ -90,7 +90,30 @@ async def register(
 
     user_with_role = result.scalar_one()
 
-    return user_with_role
+    # ============================================================================
+    # Generate access token for newly registered user (auto-login after register)
+    # ============================================================================
+    access_token_expires = timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_with_role.username}, expires_delta=access_token_expires
+    )
+
+    # ============================================================================
+    # ACTIVE TOKENS TRACKING - Currently DISABLED
+    # ============================================================================
+    # Uncomment line below to add token to active_tokens set
+    # active_tokens.add(access_token)
+    # ============================================================================
+
+    # Build metadata for user
+    user_metadata = UserLoginMetadata.from_orm(user_with_role)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "metadata": user_metadata
+    }
 
 
 @router.post("/login", response_model=Token)
