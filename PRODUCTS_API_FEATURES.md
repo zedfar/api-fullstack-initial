@@ -2,9 +2,10 @@
 
 ## Overview
 Products API sekarang sudah mendukung:
-- ✅ **Sorting** (by name, stock, price, created_at, status)
-- ✅ **Stock Status Indicator** (red/yellow/green)
 - ✅ **Pagination Metadata** (total count, page info)
+- ✅ **Sorting** (by name, stock, price, created_at, status)
+- ✅ **Filtering** (by stock_status, price range, category, search)
+- ✅ **Stock Status Indicator** (red/yellow/green)
 
 Semua fitur tanpa perubahan tabel database.
 
@@ -64,7 +65,84 @@ GET /api/v1/products?skip=40&limit=20
 
 ---
 
-## 2. Sorting Feature
+## 2. Filtering Features
+
+### Available Filters
+
+| Parameter | Type | Description | Example Values |
+|-----------|------|-------------|----------------|
+| `search` | string | Search by product name (case-insensitive) | `laptop`, `gaming` |
+| `category_id` | UUID | Filter by category | `550e8400-e29b-41d4-...` |
+| `stock_status` | string | Filter by stock status | `red`, `yellow`, `green` |
+| `min_price` | float | Minimum price (inclusive) | `100000`, `500000` |
+| `max_price` | float | Maximum price (inclusive) | `2000000`, `5000000` |
+
+### Filter Examples
+
+#### Filter by Stock Status
+
+**Get all out-of-stock products (red):**
+```
+GET /api/v1/products?stock_status=red
+```
+
+Returns only products where `stock == 0`
+
+**Get all low-stock products (yellow):**
+```
+GET /api/v1/products?stock_status=yellow
+```
+
+Returns only products where `0 < stock <= low_stock_threshold`
+
+**Get all healthy-stock products (green):**
+```
+GET /api/v1/products?stock_status=green
+```
+
+Returns only products where `stock > low_stock_threshold`
+
+**Use case:** Inventory management - quickly find products that need restocking
+
+#### Filter by Price Range
+
+**Get products between Rp 1,000,000 and Rp 5,000,000:**
+```
+GET /api/v1/products?min_price=1000000&max_price=5000000
+```
+
+**Get products above Rp 10,000,000:**
+```
+GET /api/v1/products?min_price=10000000
+```
+
+**Get products below Rp 500,000:**
+```
+GET /api/v1/products?max_price=500000
+```
+
+**Use case:** Product catalog with price range slider
+
+#### Combine Multiple Filters
+
+**Low-stock products in specific price range:**
+```
+GET /api/v1/products?stock_status=yellow&min_price=100000&max_price=1000000
+```
+
+**Out-of-stock products in specific category:**
+```
+GET /api/v1/products?stock_status=red&category_id=xxx
+```
+
+**Search with price range:**
+```
+GET /api/v1/products?search=laptop&min_price=5000000&max_price=15000000
+```
+
+---
+
+## 3. Sorting Feature
 
 ### Query Parameters
 

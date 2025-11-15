@@ -29,6 +29,9 @@ async def get_all_products(
     limit: int = Query(10, ge=1, le=100, description="Number of records to return"),
     search: Optional[str] = Query(None, description="Search by name"),
     category_id: Optional[UUID] = Query(None, description="Filter by category ID"),
+    stock_status: Optional[str] = Query(None, description="Filter by stock status: red, yellow, green"),
+    min_price: Optional[float] = Query(None, ge=0, description="Minimum price"),
+    max_price: Optional[float] = Query(None, ge=0, description="Maximum price"),
     sort_by: Optional[str] = Query(None, description="Sort by field: name, stock, price, created_at, status"),
     order: Optional[str] = Query("asc", description="Sort order: asc or desc"),
     db: AsyncSession = Depends(get_postgres_db),
@@ -44,6 +47,33 @@ async def get_all_products(
 
     if category_id:
         base_query = base_query.where(Product.category_id == category_id)
+
+    # ============================================================================
+    # FILTER by stock_status (red/yellow/green)
+    # ============================================================================
+    if stock_status:
+        status_value = stock_status.lower()
+        if status_value == "red":
+            # Red: stock == 0
+            base_query = base_query.where(Product.stock == 0)
+        elif status_value == "yellow":
+            # Yellow: 0 < stock <= low_stock_threshold
+            base_query = base_query.where(
+                (Product.stock > 0) &
+                (Product.stock <= Product.low_stock_threshold)
+            )
+        elif status_value == "green":
+            # Green: stock > low_stock_threshold
+            base_query = base_query.where(Product.stock > Product.low_stock_threshold)
+
+    # ============================================================================
+    # FILTER by price range (min_price and max_price)
+    # ============================================================================
+    if min_price is not None:
+        base_query = base_query.where(Product.price >= min_price)
+
+    if max_price is not None:
+        base_query = base_query.where(Product.price <= max_price)
 
     # ============================================================================
     # Get total count (before pagination)
