@@ -81,8 +81,16 @@ async def register(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+    
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .where(User.id == new_user.id)
+    )
 
-    return new_user
+    user_with_role = result.scalar_one()
+
+    return user_with_role
 
 
 @router.post("/login", response_model=Token)
