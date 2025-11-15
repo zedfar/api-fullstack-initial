@@ -1,7 +1,7 @@
 # from sqlalchemy import Column, String, Boolean, Integer, DateTime, ForeignKey
 from app.schemas.role import RoleSimple
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import uuid
 
@@ -56,3 +56,23 @@ class UserLoginMetadata(BaseModel):
 
     class Config:
         from_attributes = True
+        
+        
+        
+  
+# ============================================================================
+# Pagination Schemas
+# ============================================================================
+class PaginationMetadata(BaseModel):
+    """Metadata for pagination"""
+    total: int = Field(..., description="Total number of records")
+    skip: int = Field(..., description="Number of records skipped")
+    limit: int = Field(..., description="Number of records per page")
+    page: int = Field(..., description="Current page number (1-indexed)")
+    total_pages: int = Field(..., description="Total number of pages")
+
+
+class PaginatedUserResponse(BaseModel):
+    """Response with pagination metadata"""
+    data: List[UserResponse]
+    metadata: PaginationMetadata

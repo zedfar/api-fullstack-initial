@@ -2,39 +2,102 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func
-from typing import List
+from typing import Optional
 from app.database import get_postgres_db
 from app.models.user import User
 from app.models.role import Role
-from app.schemas.user import UserResponse, UserCreate, UserUpdate
+from app.schemas.user import (
+    UserResponse,
+    UserCreate,
+    UserUpdate,
+    PaginatedUserResponse,
+    PaginationMetadata
+)
 from app.dependencies import get_current_active_user
 from app.utils.security import get_password_hash
+import math
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("", response_model=List[UserResponse])
+@router.get("", response_model=PaginatedUserResponse)
 async def get_all_users(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        10, ge=1, le=100, description="Number of records to return"),
+    limit: int = Query(10, ge=1, le=100, description="Number of records to return"),
     search: str = Query(None, description="Search by username or email"),
+    sort_by: Optional[str] = Query(None, description="Sort by field: username, email, full_name, created_at"),
+    order: Optional[str] = Query("asc", description="Sort order: asc or desc"),
     db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    query = select(User).options(selectinload(User.role))
+    # ============================================================================
+    # Build base query for filtering
+    # ============================================================================
+    base_query = select(User)
 
     if search:
-        query = query.where(
+        base_query = base_query.where(
             (User.username.ilike(f"%{search}%")) |
-            (User.email.ilike(f"%{search}%"))
+            (User.email.ilike(f"%{search}%")) |
+            (User.full_name.ilike(f"%{search}%"))
         )
 
+    # ============================================================================
+    # Get total count (before pagination)
+    # ============================================================================
+    count_query = select(func.count()).select_from(base_query.alias())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # ============================================================================
+    # Build query with eager loading
+    # ============================================================================
+    query = base_query.options(selectinload(User.role))
+
+    # ============================================================================
+    # SORTING - Sort by username, email, full_name, or created_at
+    # ============================================================================
+    if sort_by:
+        sort_columns = {
+            "username": User.username,
+            "email": User.email,
+            "full_name": User.full_name,
+            "created_at": User.created_at
+        }
+
+        if sort_by in sort_columns:
+            column = sort_columns[sort_by]
+            # Apply order (asc or desc)
+            if order and order.lower() == "desc":
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+
+    # ============================================================================
+    # Apply pagination
+    # ============================================================================
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     users = result.scalars().all()
 
-    return users
+    # ============================================================================
+    # Calculate pagination metadata
+    # ============================================================================
+    page = (skip // limit) + 1 if limit > 0 else 1
+    total_pages = math.ceil(total / limit) if limit > 0 else 0
+
+    metadata = PaginationMetadata(
+        total=total,
+        skip=skip,
+        limit=limit,
+        page=page,
+        total_pages=total_pages
+    )
+
+    return PaginatedUserResponse(
+        data=users,
+        metadata=metadata
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
